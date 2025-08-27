@@ -1,0 +1,108 @@
+---
+params:
+  root_dir: NULL
+title: "Leasehold Housing Analysis"
+author: "Gayle Leen <gayle.lamshangleen@gmail.com>"
+date: "`r Sys.Date()`"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: hide
+    df_print: paged
+    fig_caption: true
+    theme: flatly
+  bookdown::word_document2:
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: hide
+    df_print: paged
+    fig_caption: true
+    theme: flatly
+---
+
+```{r setup, message = FALSE, warning = FALSE, echo=FALSE}
+#here::i_am("docs/report.Rmd")
+#library(here)
+library("knitr")
+
+# Default chunk options.
+# See https://yihui.name/knitr/options/ for details
+opts_chunk$set(
+  echo = FALSE, # Show code in report
+  message = FALSE, # Hide messages in report
+  warning = TRUE, # Show warnings in report
+  error = FALSE, # Stop if an error is encountered
+  fig.width = 10, # Figure width in inches
+  fig.height = 8, # Figure height in inches
+  dev = c("CairoSVG")
+)
+
+if (! exists("params"))
+  params <- list()
+
+# Saves the images to the `images` folder
+# knitr::opts_chunk$set(fig.path = "images/")
+```
+
+```{r load-lib-data}
+loaded_libs <-
+  c("knitr", "ggplot2", "dplyr", "readr", "Cairo")
+
+# Required library packages
+required_libs <-
+  c(loaded_libs, "readr", "tidyr")
+
+# If any packages aren't installed, list them and stop
+missing_libs <-
+  required_libs[!required_libs %in% rownames(installed.packages())]
+if (length(missing_libs) > 0)
+  stop(paste(c("Missing required libraries:", missing_libs), collapse = " "))
+
+# Load the necessary packages (only do this in scripts, not library code)
+for(lib in loaded_libs)
+  suppressPackageStartupMessages(library(lib, character.only = TRUE))
+
+```
+
+```{r, include=FALSE, cache=FALSE}
+#source(here('code/R/funcs.R'))
+#knitr::read_chunk(here('code/R/report_funcs.R'))
+
+```
+
+```{r process-data-pp}
+## Process the pp-2022.csv data
+## Get flats and houses per local authority district
+
+house_keys <- c("D", "S", "T")
+flat_keys <- c("F")
+readr::read_csv("../data/pp-2022.csv") |>
+  dplyr::filter(
+    (property_type %in% c(house_keys, flat_keys)) &
+    (date_of_transfer >= "2022-03-01" & date_of_transfer <= "2022-09-30")
+
+  ) |>
+  dplyr::mutate(property_label = 
+    dplyr::case_when(
+      property_type %in% house_keys ~ "House",
+      property_type %in% flat_keys ~ "Flat"
+  )) |>
+  dplyr::select(
+    property_label,
+    local_authority_district,
+    duration
+  ) |>
+  dplyr::group_by(local_authority_district) |>
+  dplyr::summarise(
+    `Number of leasehold flat sales` = sum(duration=="L" & property_label=="Flat"),
+    `Total number of sales` = dplyr::n(),
+    `Percentage of leasehold flat sales` = round(100 * sum(duration=="L" & property_label=="Flat") / dplyr::n(), 2)
+  ) |>
+  dplyr::rename(
+    `Local Authority District` = local_authority_district
+  ) |>
+  readr::write_csv("../output/summary1.csv")
+```
