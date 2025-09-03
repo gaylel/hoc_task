@@ -1,0 +1,10 @@
+name: hoc_task_glsl
+channels:
+  - conda-forge
+dependencies:
+  - r-base=4.3
+  - r-tidyverse
+  - r-bookdown
+  - r-rmarkdown
+  - r-openxlsx
+  - r-cairo

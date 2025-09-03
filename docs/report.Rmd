@@ -14,8 +14,6 @@ output:
     fig_caption: true
     theme: flatly
   bookdown::word_document2:
-    toc: true
-    toc_float: true
     number_sections: true
     code_folding: hide
     df_print: paged
@@ -24,8 +22,6 @@ output:
 ---
 
 ```{r setup, message = FALSE, warning = FALSE, echo=FALSE}
-#here::i_am("docs/report.Rmd")
-#library(here)
 library("knitr")
 
 # Default chunk options.
@@ -35,41 +31,27 @@ opts_chunk$set(
   message = FALSE, # Hide messages in report
   warning = TRUE, # Show warnings in report
   error = FALSE, # Stop if an error is encountered
-  fig.width = 10, # Figure width in inches
-  fig.height = 8, # Figure height in inches
-  dev = c("CairoSVG")
+  fig.width = 7, # Figure width in inches
+  fig.height = 6 # Figure height in inches
 )
 
 if (! exists("params"))
   params <- list()
 
-# Saves the images to the `images` folder
-# knitr::opts_chunk$set(fig.path = "images/")
 ```
 
 ```{r load-lib-data}
 loaded_libs <-
-  c("knitr", "ggplot2", "dplyr", "readr", "Cairo")
+  c("knitr", "ggplot2", "dplyr", "readr", "Cairo", "tidyr", "openxlsx")
 
-# Required library packages
-required_libs <-
-  c(loaded_libs, "readr", "tidyr")
-
-# If any packages aren't installed, list them and stop
-missing_libs <-
-  required_libs[!required_libs %in% rownames(installed.packages())]
-if (length(missing_libs) > 0)
-  stop(paste(c("Missing required libraries:", missing_libs), collapse = " "))
-
-# Load the necessary packages (only do this in scripts, not library code)
 for(lib in loaded_libs)
   suppressPackageStartupMessages(library(lib, character.only = TRUE))
 
-```
-
-```{r, include=FALSE, cache=FALSE}
-#source(here('code/R/funcs.R'))
-#knitr::read_chunk(here('code/R/report_funcs.R'))
+skewness <-  function(x) {
+ m3 <- mean((x - mean(x))^3)
+ skewness <- m3/(sd(x)^3)
+ skewness
+}
 
 ```
 
@@ -79,30 +61,268 @@ for(lib in loaded_libs)
 
 house_keys <- c("D", "S", "T")
 flat_keys <- c("F")
-readr::read_csv("../data/pp-2022.csv") |>
-  dplyr::filter(
-    (property_type %in% c(house_keys, flat_keys)) &
-    (date_of_transfer >= "2022-03-01" & date_of_transfer <= "2022-09-30")
 
+## Read in the data, filter for houses and flats, and for the date range
+
+hf_df <-
+    readr::read_csv("../data/pp-2022.csv") |>
+    dplyr::filter(
+      (property_type %in% c(house_keys, flat_keys)) &
+      (date_of_transfer >= "2022-03-01" & date_of_transfer <= "2022-09-30")
+
+    ) |>
+    dplyr::mutate(property_label = 
+      dplyr::case_when(
+        property_type %in% house_keys ~ "House",
+        property_type %in% flat_keys ~ "Flat"
+    )) 
+
+## Summarise the number of leasehold flat sales per local authority district
+
+lf_df <- hf_df |>
+    dplyr::select(
+      property_label,
+      local_authority_district,
+      duration
+    ) |>
+    dplyr::group_by(local_authority_district) |>
+    dplyr::summarise(
+      number_of_leasehold_flat_sales = sum(duration=="L" & property_label=="Flat"),
+      total_number_of_sales = dplyr::n(),
+      percentage_of_sales_that_are_leasehold_flats = round(100 * sum(duration=="L" & property_label=="Flat") / dplyr::n(), 2)
+    ) |>
+    dplyr::arrange(desc(percentage_of_sales_that_are_leasehold_flats)) 
+```
+
+
+```{r lad-stats}
+total_sales <- sum(lf_df[["total_number_of_sales"]])
+leasehold_flat_sales <- sum(lf_df[["number_of_leasehold_flat_sales"]])
+liverpool_leasehold_flat_sales <- 
+  lf_df |> 
+    dplyr::filter(local_authority_district == "LIVERPOOL") |> 
+    dplyr::pull(number_of_leasehold_flat_sales)
+
+liverpool_total_sales <- 
+  lf_df |> 
+    dplyr::filter(local_authority_district == "LIVERPOOL") |> 
+    dplyr::pull(total_number_of_sales)
+ 
+```
+
+
+```{r process-data-liv}
+## Process the liverpool_postcodes.csv data and join to the pp-2022.csv data
+lf_liv_df <- hf_df |>
+  dplyr::inner_join(
+    readr::read_csv("../data/liverpool_postcodes.csv") |>
+      dplyr::select(
+        postcode = Postcode,
+        Constituency_Name
+      ),
+    by = "postcode"
   ) |>
-  dplyr::mutate(property_label = 
-    dplyr::case_when(
-      property_type %in% house_keys ~ "House",
-      property_type %in% flat_keys ~ "Flat"
-  )) |>
+  dplyr::filter(
+    (Constituency_Name == "Liverpool Riverside") &
+    (property_label == "Flat") &
+    (duration == "L")
+  ) 
+
+# Skewness of the price distribution was ``r round(skewness(lf_liv_df$price),2)`` = 1.8 (positively skewed) due to a small number of high value properties - use the median as a better measure of central tendency.
+
+```
+
+```{r get-address-list}
+
+# Get the list of addresses for leasehold flats sold in Liverpool Riverside
+
+liv_address_df <- 
+lf_liv_df |>
+  dplyr::mutate(
+    paon_street = ifelse(is.na(paon), street, paste(paon, street))
+  ) |>
+  tidyr::unite(
+    "address", 
+    saon, 
+    paon_street,
+    locality,
+    towncity,
+    postcode,
+    na.rm=TRUE, 
+    sep=", ")|>
   dplyr::select(
-    property_label,
-    local_authority_district,
-    duration
+    address,
+    price,
+    date_of_transfer
   ) |>
-  dplyr::group_by(local_authority_district) |>
+  dplyr::arrange(
+    desc(price)
+  ) 
+``` 
+
+```{r write-xlsx}
+
+  write_to_worksheet <- function(df, wb, sheet_name)
+  {
+      openxlsx::addWorksheet(wb, sheet_name, gridLines = TRUE)
+      openxlsx::writeData(wb, sheet_name, df, rowNames=FALSE)
+      return(wb)
+  }
+
+  # Write tables to xlsx file
+  wb <- openxlsx::createWorkbook() 
+  wb <- write_to_worksheet(
+          lf_df |>
+            dplyr::rename(
+              `Local Authority District` = local_authority_district,
+              `Number of leasehold flat sales` = number_of_leasehold_flat_sales,
+              `Total number of sales` = total_number_of_sales,
+              `Percentage of sales that are leasehold flats` = percentage_of_sales_that_are_leasehold_flats
+            ),
+          wb, 
+          "Leasehold flat sales by LAD"
+  )
+  wb <- write_to_worksheet(
+          liv_address_df |>
+            dplyr::rename(
+              `Address` = address,
+              `Price (£)` = price,
+              `Date of Transfer` = date_of_transfer
+            ), 
+          wb, 
+          "LR leasehold flat sales"
+  )
+  openxlsx::setColWidths(wb, sheet = "Leasehold flat sales by LAD", cols=1:ncol(lf_df), widths = "auto")
+  openxlsx::setColWidths(wb, sheet = "LR leasehold flat sales", cols=1:ncol(liv_address_df), widths = "auto")
+  openxlsx::saveWorkbook(wb, "../output/leasehold_analysis_gaylelamshangleen.xlsx", overwrite = TRUE)
+
+```
+
+```{r number-of-sales-per-month}
+sales_per_month <- lf_liv_df |>
+  dplyr::mutate(
+    month = format(date_of_transfer, "%Y-%m")
+  ) |>
+  dplyr::group_by(month) |>
   dplyr::summarise(
-    `Number of leasehold flat sales` = sum(duration=="L" & property_label=="Flat"),
-    `Total number of sales` = dplyr::n(),
-    `Percentage of leasehold flat sales` = round(100 * sum(duration=="L" & property_label=="Flat") / dplyr::n(), 2)
+    number_of_leasehold_flat_sales = dplyr::n()
   ) |>
   dplyr::rename(
-    `Local Authority District` = local_authority_district
+    `Month` = month
   ) |>
-  readr::write_csv("../output/summary1.csv")
+  ggplot(aes(x=Month, y=number_of_leasehold_flat_sales, group=1)) +
+  geom_col(fill='lightgrey') +
+  scale_y_continuous(
+        limits = c(0, 200),
+        expand = c(0,0)) +
+  geom_text(aes(label = number_of_leasehold_flat_sales, vjust = -0.5)) +
+  labs(
+    title = "Number of leasehold flat sales in Liverpool Riverside",
+    subtitle = "March 2022 to September 2022",
+    x = "Month",
+    y = "Number of leasehold flat sales"
+  ) +
+  theme_bw() 
 ```
+
+```{r plot-all-lad}
+# Calculate quantiles
+quantiles <- quantile(lf_df$`percentage_of_sales_that_are_leasehold_flats`, probs = c(0.25, 0.5, 0.75))
+
+# Create a data frame to label quantiles
+quantile_df <- data.frame(
+  quantile = c(quantiles, round(100 * liverpool_leasehold_flat_sales / liverpool_total_sales,2)),
+  label = c("25th percentile", "50th percentile", "75th percentile", "Liverpool")
+)
+
+liv_g <- lf_df |> 
+  dplyr::mutate(
+    `LAD_liverpool_or_not` = 
+      dplyr::case_when(
+        local_authority_district != "LIVERPOOL" ~ "Other LADs",
+        local_authority_district == "LIVERPOOL" ~ "Liverpool"
+      )
+  ) |>
+  ggplot(aes(x = percentage_of_sales_that_are_leasehold_flats)) +
+  geom_histogram(binwidth = 5, fill = "lightgrey") +
+  geom_vline(data = quantile_df, aes(xintercept = quantile, linetype = label, color = label)) +
+  scale_linetype_manual(values = c("dotted", "solid", "dotted", "solid")) +
+  scale_color_manual(values = c("black", "black", "black", "red")) +
+    labs(
+    title = "Leasehold flats (% total sales) per Local Authority District",
+    subtitle = "March 2022 to September 2022",
+    x = "% total sales",
+    y = "frequency"
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+# Overview
+
+Homeownership in England and Wales can be broadly categorised into two type of tenure: freehold and leasehold. In freehold tenure, the owner of the property also owns the land on which the property is built, while a leasehold arrangement means that the ownership of the property is time-limited, while the freeholder retains ownership of the land that the property is built on.
+
+## Statistics on leasehold housing in England
+
+The Ministry of Housing, Communities and Local Government (MHCLG) has estimated the number of leasehold homes in England at 4.83 million, representing 19% of England's housing stock^[https://commonslibrary.parliament.uk/research-briefings/cbp-10309/]. Most leasehold homes are in the private sector, with 2.59 million homes (54% of leasehold homes) owned by owner-occupiers, and 1.96 million homes (41%) rented privately. The remainder of leasehold homes (277,000, 6%) are in the social rented sector, where the leaseholder is a housing association or local authority, renting the property to social tenants. 
+
+There are around 3.49 million leasehold flats, representing 72% of all leasehold homes. There are around 1.35 million leasehold houses, representing 28% of all leasehold homes. Flats are likely to be leasehold while houses are likely to be freehold, with 58% of flats and 7% of houses being leasehold. Most flats in the private sector are owned on a leasehold basis, with 91% of owner-occupied flats and 74% of privately rented flats estimated to be leasehold. In the social rented sector, it is more likely that the social landlord will own the freehold to the property, with only 10% of social rented flats estimated to be leasehold.
+
+Leasehold is most common in London (38% of homes) and the North West (26%), compared to other regions. This is due to a high proportion of London's housing stock being flats, which are more likely to be leasehold, and in the NorthWest, around 22% of houses are leasehold, which is substantially higher than 7% across England.
+
+# Leasehold flat sales in Liverpool
+
+The HM Land Registry's publicly available Price Paid Data (PPD)^[https://data.parliament.uk/resources/constituencystatistics/pp-2022.csv], which records all residential property transactions in England and Wales, was used to investigate leasehold housing sales. During the period 1 March 2022 to 30 September 2022, there was a total of ``r format(total_sales, big.mark = ",")`` home sales (both flats and houses) in England and Wales. ``r format(leasehold_flat_sales, big.mark = ",")`` (``r round(100 * leasehold_flat_sales / total_sales,2)``%) of these sales were leasehold flats.
+
+In Liverpool, there was a total of ``r format(liverpool_total_sales, big.mark = ",")`` home sales (both flats and houses). ``r format(liverpool_leasehold_flat_sales, big.mark = ",")`` (``r round(100 * liverpool_leasehold_flat_sales / liverpool_total_sales,2)``%) of these sales were leasehold flats.
+
+To compare if Liverpool had more or fewer leasehold flat sales than other local authority districts, between 1 March 2022 to 30 September 2022, we can look at the percentage of sales which were leasehold flat sales in each district, since this accounts for differences in the total number of sales between districts.
+
+The figure below shows the distribution of the percentage of leasehold flat sales (as a percentage of total sales) for all local authority districts in England and Wales. The vertical lines show the 25th, 50th (median) and 75th percentiles of the distribution, as well as the percentage for Liverpool, while lies just below the 75% percentile. This shows that Liverpool had a higher percentage of leasehold flat sales than many other districts, but was not an outlier. 
+
+```{r plot-liv-sales}
+liv_g
+```
+
+# Leasehold flat sales in Liverpool Riverside
+
+The PPD data was then filtered to look specifically at leasehold flat sales in the Liverpool Riverside parliamentary constituency, by postcode matching^[https://data.parliament.uk/resources/constituencystatistics/liverpool_postcodes.csv].
+
+The number of leasehold flat sales in Liverpool Riverside between 1 March 2022 and 30 September 2022 was ``r toString(nrow(lf_liv_df))``.
+
+The average price of leasehold flats sold in Liverpool Riverside between 1 March 2022 and 30 September 2022 was £``r format(round(median(lf_liv_df$price),2), big.mark = ",")`` (median). We use the median here rather than the mean, since the price distribution is positively skewed, due to a small number of high value properties.
+
+The chart below shows the number of leasehold flat sales in Liverpool Riverside per month between March 2022 and September 2022.
+
+```{r plot-sales-per-month}
+sales_per_month
+```
+
+# Output tables
+
+**leasehold_analysis_gayle_lamshangleen.xlsx** contains two sheets:
+
+- **Leasehold flat sales by LAD**: This sheet contains a summary of the number of leasehold flat sales, total number of sales, and percentage of sales that were leasehold flats, for each local authority district in England and Wales, between 1 March 2022 and 30 September 2022. 
+
+- **LR leasehold flat sales**: This sheet contains a list of the addresses of leasehold flats sold in the Liverpool Riverside constituency between 1 March 2022 and 30 September 2022, along with the sale price and date of transfer.
+
+# Data sources
+
+- **pp-2022.csv**: Price Paid Data for England and Wales in 2022, from the HM Land Registry [https://data.parliament.uk/resources/constituencystatistics/pp-2022.csv]
+
+- **liverpool_postcodes.csv**: Postcodes for Liverpool constituencies were taken from [https://data.parliament.uk/resources/constituencystatistics/liverpool_postcodes.csv]
+
+- **Leasehold housing in England: Statistics from the House of Commons Library**  [https://commonslibrary.parliament.uk/research-briefings/cbp-10309/] Estimates of the number of leasehold homes in England in 2023/2024 were taken from this briefing paper.
+
+## A note about comparing MHCLG estimates with Land Registry data
+
+When comparing the MHCLG estimates of leasehold housing with the Land Registry Price Paid Data (PPD), it is important to bear these following points in mind:
+
+- The Land Registry Price Paid Data (PPD) data includes records of transactions e.g. sale of a leasehold flat. A property only appears in the PPD if it has been sold. This data can be used to study the market for leasehold properties: for instance to find out what types of property are most likely to be sold on a leasehold basis, and where those properties are located. PPD cannot be used to estimate the prevalence of leasehold properties across the housing stock.
+
+- The MHCLG data is an estimate of the number of leasehold homes, by combining data from the English Housing Survey (EHS) with Land Registry records. The estimates are based on data from a sample survey, and this means that the figures are subject to statistical uncertainty, and should not be treated as exact counts.
+
+- The MHCLG data is for 2023/2024, while the Land Registry PPD data used in this report is for the period March to September 2022. MHCLG reports that there was no statistically significant change in the total number of leasehold homes in England between 2021/22 and 2023/24. However, due to policy changes aimed at restricting new leasehold houses, including the Ground Rent Act 2022, the proportion of houses that are leasehold fell from 8% to 7% during this period, with a fall in the North West (which includes Liverpool) from 28% to 22%. The data from MHCLG gives the proportion of homes in the North West that are leasehold in 2023/2024 as 26%, and this is likely to be lower than in 2022.
+
