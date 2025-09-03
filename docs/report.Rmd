@@ -274,9 +274,9 @@ Leasehold is most common in London (38% of homes) and the North West (26%), comp
 
 # Leasehold flat sales in Liverpool
 
-The HM Land Registry's publicly available Price Paid Data (PPD)^[https://data.parliament.uk/resources/constituencystatistics/pp-2022.csv], which records all residential property transactions in England and Wales, was used to investigate leasehold housing sales. During the period 1 March 2022 to 30 September 2022, there was a total of ``r format(total_sales, big.mark = ",")`` home sales (both flats and houses) in England and Wales. ``r format(leasehold_flat_sales, big.mark = ",")`` (``r round(100 * leasehold_flat_sales / total_sales,2)``%) of these sales were leasehold flats.
+The HM Land Registry's publicly available Price Paid Data (PPD)^[https://data.parliament.uk/resources/constituencystatistics/pp-2022.csv], which records all residential property transactions in England and Wales, was used to investigate leasehold housing sales. During the period 1 March 2022 to 30 September 2022, there was a total of `r format(total_sales, big.mark = ",")` home sales (both flats and houses) in England and Wales. `r format(leasehold_flat_sales, big.mark = ",")` (`r round(100 * leasehold_flat_sales / total_sales,2)`%) of these sales were leasehold flats.
 
-In Liverpool, there was a total of ``r format(liverpool_total_sales, big.mark = ",")`` home sales (both flats and houses). ``r format(liverpool_leasehold_flat_sales, big.mark = ",")`` (``r round(100 * liverpool_leasehold_flat_sales / liverpool_total_sales,2)``%) of these sales were leasehold flats.
+In Liverpool, there was a total of `r format(liverpool_total_sales, big.mark = ",")` home sales (both flats and houses). `r format(liverpool_leasehold_flat_sales, big.mark = ",")` (`r round(100 * liverpool_leasehold_flat_sales / liverpool_total_sales,2)`%) of these sales were leasehold flats.
 
 To compare if Liverpool had more or fewer leasehold flat sales than other local authority districts, between 1 March 2022 to 30 September 2022, we can look at the percentage of sales which were leasehold flat sales in each district, since this accounts for differences in the total number of sales between districts.
 
@@ -290,9 +290,9 @@ liv_g
 
 The PPD data was then filtered to look specifically at leasehold flat sales in the Liverpool Riverside parliamentary constituency, by postcode matching^[https://data.parliament.uk/resources/constituencystatistics/liverpool_postcodes.csv].
 
-The number of leasehold flat sales in Liverpool Riverside between 1 March 2022 and 30 September 2022 was ``r toString(nrow(lf_liv_df))``.
+The number of leasehold flat sales in Liverpool Riverside between 1 March 2022 and 30 September 2022 was `r toString(nrow(lf_liv_df))`.
 
-The average price of leasehold flats sold in Liverpool Riverside between 1 March 2022 and 30 September 2022 was £``r format(round(median(lf_liv_df$price),2), big.mark = ",")`` (median). We use the median here rather than the mean, since the price distribution is positively skewed, due to a small number of high value properties.
+The average price of leasehold flats sold in Liverpool Riverside between 1 March 2022 and 30 September 2022 was £`r format(round(median(lf_liv_df$price),2), big.mark = ",")` (median). We use the median here rather than the mean, since the price distribution is positively skewed, due to a small number of high value properties.
 
 The chart below shows the number of leasehold flat sales in Liverpool Riverside per month between March 2022 and September 2022.
 
