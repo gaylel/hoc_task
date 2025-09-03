@@ -262,15 +262,15 @@ liv_g <- lf_df |>
 
 # Overview
 
-Homeownership in England and Wales can be broadly categorised into two type of tenure: freehold and leasehold. In freehold tenure, the owner of the property also owns the land on which the property is built, while a leasehold arrangement means that the ownership of the property is time-limited, while the freeholder retains ownership of the land that the property is built on.
+Homeownership in England and Wales can be broadly categorised into two types of tenure: freehold and leasehold. In freehold tenure, the owner of the property also owns the land on which the property is built, while a leasehold arrangement means that the ownership of the property is time-limited, with the freeholder retaining ownership of the land that the property is built on.
 
 ## Statistics on leasehold housing in England
 
-The Ministry of Housing, Communities and Local Government (MHCLG) has estimated the number of leasehold homes in England at 4.83 million, representing 19% of England's housing stock^[https://commonslibrary.parliament.uk/research-briefings/cbp-10309/]. Most leasehold homes are in the private sector, with 2.59 million homes (54% of leasehold homes) owned by owner-occupiers, and 1.96 million homes (41%) rented privately. The remainder of leasehold homes (277,000, 6%) are in the social rented sector, where the leaseholder is a housing association or local authority, renting the property to social tenants. 
+The Ministry of Housing, Communities and Local Government (MHCLG) has estimated the number of leasehold homes in England at 4.83 million, representing 19% of England's housing stock^[https://commonslibrary.parliament.uk/research-briefings/cbp-10309/]. Most leasehold homes are in the private sector, with 2.59 million homes (54% of leasehold homes) owned by owner-occupiers, and 1.96 million homes (41%) rented privately. The remainder of leasehold homes (277,000, 6%) are in the social rented sector, where the leaseholder is a housing association or local authority, letting the property out to social tenants. 
 
 There are around 3.49 million leasehold flats, representing 72% of all leasehold homes. There are around 1.35 million leasehold houses, representing 28% of all leasehold homes. Flats are likely to be leasehold while houses are likely to be freehold, with 58% of flats and 7% of houses being leasehold. Most flats in the private sector are owned on a leasehold basis, with 91% of owner-occupied flats and 74% of privately rented flats estimated to be leasehold. In the social rented sector, it is more likely that the social landlord will own the freehold to the property, with only 10% of social rented flats estimated to be leasehold.
 
-Leasehold is most common in London (38% of homes) and the North West (26%), compared to other regions. This is due to a high proportion of London's housing stock being flats, which are more likely to be leasehold, and in the NorthWest, around 22% of houses are leasehold, which is substantially higher than 7% across England.
+Leasehold is most common in London (38% of homes) and the North West (26%), compared to other regions. This is due to a high proportion of London's housing stock being flats, which are more likely to be leasehold, and in the NorthWest, around 22% of houses are leasehold, which is substantially higher than across England, where 7% of houses are leasehold.
 
 # Leasehold flat sales in Liverpool
 
@@ -280,7 +280,7 @@ In Liverpool, there was a total of ``r format(liverpool_total_sales, big.mark = 
 
 To compare if Liverpool had more or fewer leasehold flat sales than other local authority districts, between 1 March 2022 to 30 September 2022, we can look at the percentage of sales which were leasehold flat sales in each district, since this accounts for differences in the total number of sales between districts.
 
-The figure below shows the distribution of the percentage of leasehold flat sales (as a percentage of total sales) for all local authority districts in England and Wales. The vertical lines show the 25th, 50th (median) and 75th percentiles of the distribution, as well as the percentage for Liverpool, while lies just below the 75% percentile. This shows that Liverpool had a higher percentage of leasehold flat sales than many other districts, but was not an outlier. 
+The figure below shows the distribution of the percentage of leasehold flat sales (as a percentage of total sales) for all local authority districts in England and Wales. The vertical lines show the 25th, 50th (median) and 75th percentiles of the distribution, as well as the percentage for Liverpool, which lies just below the 75% percentile. This shows that Liverpool had a higher percentage of leasehold flat sales than many other districts, but was not an outlier. 
 
 ```{r plot-liv-sales}
 liv_g
